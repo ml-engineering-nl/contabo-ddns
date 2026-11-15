@@ -215,7 +215,10 @@ mod tests {
         format_with_local_timestamp(&mut buf, &mut now, &named).unwrap();
         let line = String::from_utf8(buf).unwrap();
         assert!(line.starts_with('['), "{line}");
-        assert!(line.contains("] INFO [contabo_ddns::logsetup] hello"), "{line}");
+        assert!(
+            line.contains("] INFO [contabo_ddns::logsetup] hello"),
+            "{line}"
+        );
 
         let mut buf = Vec::new();
         let mut now = DeferredNow::new();
