@@ -594,9 +594,29 @@ jobs:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           VERSION: ${{ needs.build-and-push.outputs.version }}
         run: |
-          AHEAD=$(gh api "repos/${GITHUB_REPOSITORY}/compare/main...dev" --jq '.ahead_by // 0')
+          set -euo pipefail
+          git fetch origin main dev
+          AHEAD=$(git rev-list --count origin/main..origin/dev)
           if [ "$AHEAD" -eq 0 ]; then
             echo "dev is not ahead of main; skipping PR."
+            exit 0
+          fi
+
+          existing="$(gh pr list --base main --head dev --state open --json number --jq '.[0].number // empty')"
+          version_only=true
+          while IFS= read -r subject; do
+            if [[ ! "$subject" =~ ^chore:\ bump\ patch\ version\ to\ .+\ \[skip\ ci\]$ ]]; then
+              version_only=false
+              break
+            fi
+          done < <(git log --format=%s origin/main..origin/dev)
+
+          if [ "$version_only" = true ]; then
+            echo "dev is ahead of main only by patch version bump(s); skipping promote PR."
+            if [ -n "$existing" ]; then
+              gh pr close "$existing" --comment "Closing: main...dev only contains patch version bump commit(s), so there is nothing to promote."
+              echo "Closed version-only PR #${existing}."
+            fi
             exit 0
           fi
 
@@ -607,7 +627,6 @@ jobs:
           **Release:** ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/tag/v${VERSION}
           **Workflow run:** ${run_url}"
 
-          existing="$(gh pr list --base main --head dev --state open --json number --jq '.[0].number')"
           if [ -n "$existing" ]; then
             echo "Open PR already exists: #${existing}"
             gh pr comment "$existing" --body "Updated after successful dev deploy (v${VERSION}). See ${run_url}"
