@@ -1,0 +1,40 @@
+name: Delete merged head branch
+
+# Replaces GitHub "Automatically delete head branches" so long-lived
+# branches (dev, main) are never deleted when used as a PR head.
+on:
+  pull_request:
+    types: [closed]
+
+permissions: {}
+
+jobs:
+  delete-head-branch:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Delete head branch unless protected
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+        run: |
+          set -euo pipefail
+          if [ "$HEAD_REPO" != "$GITHUB_REPOSITORY" ]; then
+            echo "Head is a fork (${HEAD_REPO}); skipping delete."
+            exit 0
+          fi
+          case "$HEAD_REF" in
+            main|dev)
+              echo "Keeping long-lived branch '${HEAD_REF}'."
+              exit 0
+              ;;
+          esac
+          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/${HEAD_REF}" >/dev/null 2>&1; then
+            gh api --method DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${HEAD_REF}"
+            echo "Deleted head branch '${HEAD_REF}'."
+          else
+            echo "Head branch '${HEAD_REF}' already gone."
+          fi
