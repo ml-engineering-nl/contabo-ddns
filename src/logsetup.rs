@@ -5,8 +5,10 @@ use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
 
 use flexi_logger::{
-    Cleanup, Criterion, Duplicate, FileSpec, Logger, LoggerHandle, Naming, WriteMode,
+    Cleanup, Criterion, DeferredNow, Duplicate, FileSpec, Logger, LoggerHandle, Naming,
+    TS_DASHES_BLANK_COLONS_DOT_BLANK, WriteMode,
 };
+use log::Record;
 
 use crate::config::LogConfig;
 use crate::error::Error;
@@ -19,6 +21,22 @@ fn flexi_parse_err(err: impl ToString) -> Error {
 /// Formats a log-directory create or write failure.
 fn log_dir_err(dir: &Path, action: &str, err: impl std::fmt::Display) -> Error {
     Error::new(format!("{action} log dir {}: {err}", dir.display()))
+}
+
+/// `[local timestamp] LEVEL [module] message`
+fn format_with_local_timestamp(
+    w: &mut dyn std::io::Write,
+    now: &mut DeferredNow,
+    record: &Record,
+) -> std::io::Result<()> {
+    write!(
+        w,
+        "[{}] {} [{}] {}",
+        now.format(TS_DASHES_BLANK_COLONS_DOT_BLANK),
+        record.level(),
+        record.module_path().unwrap_or("<unnamed>"),
+        record.args()
+    )
 }
 
 /// Builds a `Logger` (file+rotate or stdout) without starting the global logger.
@@ -42,6 +60,7 @@ pub fn prepare(log: &LogConfig) -> Result<Logger, Error> {
         let parsed = Logger::try_with_str(spec).map_err(flexi_parse_err)?;
         let mut logger = parsed
             .log_to_file(files)
+            .format(format_with_local_timestamp)
             .rotate(
                 Criterion::Size(log.rotate_size_mb.saturating_mul(1024 * 1024)),
                 Naming::Numbers,
@@ -56,6 +75,7 @@ pub fn prepare(log: &LogConfig) -> Result<Logger, Error> {
         let logger = Logger::try_with_str(spec)
             .map_err(flexi_parse_err)?
             .log_to_stdout()
+            .format(format_with_local_timestamp)
             .write_mode(WriteMode::Direct);
         Ok(logger)
     }
@@ -177,9 +197,36 @@ pub(crate) fn unique_temp(prefix: &str) -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::{
-        finish_start, flexi_parse_err, init, log_dir_label, prepare, split_log_file, unique_temp,
+        finish_start, flexi_parse_err, format_with_local_timestamp, init, log_dir_label, prepare,
+        split_log_file, unique_temp,
     };
     use crate::config::LogConfig;
+    use flexi_logger::DeferredNow;
+
+    #[test]
+    fn format_prefixes_local_timestamp() {
+        let mut buf = Vec::new();
+        let mut now = DeferredNow::new();
+        let named = log::Record::builder()
+            .args(format_args!("hello"))
+            .level(log::Level::Info)
+            .module_path_static(Some("contabo_ddns::logsetup"))
+            .build();
+        format_with_local_timestamp(&mut buf, &mut now, &named).unwrap();
+        let line = String::from_utf8(buf).unwrap();
+        assert!(line.starts_with('['), "{line}");
+        assert!(line.contains("] INFO [contabo_ddns::logsetup] hello"), "{line}");
+
+        let mut buf = Vec::new();
+        let mut now = DeferredNow::new();
+        let unnamed = log::Record::builder()
+            .args(format_args!("anon"))
+            .level(log::Level::Warn)
+            .build();
+        format_with_local_timestamp(&mut buf, &mut now, &unnamed).unwrap();
+        let line = String::from_utf8(buf).unwrap();
+        assert!(line.contains("] WARN [<unnamed>] anon"), "{line}");
+    }
 
     #[test]
     fn logging_init_and_prepare_paths() {
