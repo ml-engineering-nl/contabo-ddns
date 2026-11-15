@@ -221,6 +221,16 @@ jobs:
             sed -i "s|^FROM dhi.io/rust:.*|FROM dhi.io/rust:${rust_pinned} AS builder|" Dockerfile
             rust_changed=true
           fi
+          toolchain_file_channel="$(sed -n 's/^channel *= *"\([^"]*\)".*/\1/p' rust-toolchain.toml | head -1)"
+          if [ -n "$toolchain_file_channel" ] && [ "$toolchain_file_channel" != "$rust_version" ]; then
+            echo "Rust channel in rust-toolchain.toml: ${toolchain_file_channel} -> ${rust_version}"
+            if [ "$rust_changed" = false ]; then
+              printf '\n## Rust\n\n' >> "$report_file"
+            fi
+            printf -- '- `rust-toolchain.toml` channel `%s` -> `%s`\n' "$toolchain_file_channel" "$rust_version" >> "$report_file"
+            sed -i -E "s/^(channel = \")[0-9]+\\.[0-9]+\\.[0-9]+(\")/\\1${rust_version}\\2/" rust-toolchain.toml
+            rust_changed=true
+          fi
           for workflow in .github/workflows/ci.yml .github/workflows/deploy.yml .github/workflows/dependency-updates.yml; do
             workflow_toolchain="$(sed -n "s/.*toolchain: ['\"]\([0-9][0-9.]*\)['\"].*/\1/p" "$workflow" | head -1)"
             if [ -z "$workflow_toolchain" ] || [ "$workflow_toolchain" = "$rust_version" ]; then
@@ -439,7 +449,7 @@ jobs:
         run: |
           git config user.name "${APP_SLUG}[bot]"
           git config user.email "${APP_SLUG}[bot]@users.noreply.github.com"
-          git add Cargo.toml Cargo.lock Dockerfile .github/workflows/ci.yml .github/workflows/deploy.yml .github/workflows/dependency-updates.yml
+          git add Cargo.toml Cargo.lock Dockerfile rust-toolchain.toml .github/workflows/ci.yml .github/workflows/deploy.yml .github/workflows/dependency-updates.yml
           if git diff --staged --quiet; then
             echo "No dependency changes to commit."
             exit 0

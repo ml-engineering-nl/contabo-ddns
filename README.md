@@ -328,11 +328,12 @@ bash tests/docker/network-smoke.sh contabo-ddns:ci
 
 The macvlan test creates and removes a dummy parent interface using `sudo ip`. A particular LAN's routing and firewall configuration still need testing on that LAN. Rust tests cover system DNS success and failure, explicit-server precedence, default fallback, and lookup deadlines.
 
-`cargo coverage` requires `llvm-tools-preview` and `cargo-llvm-cov`:
+`rust-toolchain.toml` pins the same Rust version as CI. rustup installs that
+toolchain (plus `clippy`, `rustfmt`, and `llvm-tools-preview`) on the next
+`cargo` run after a pull. To also install `cargo-llvm-cov` when missing:
 
 ```sh
-rustup component add llvm-tools-preview
-cargo install cargo-llvm-cov --locked
+./scripts/ensure-dev-tools.sh
 ```
 
 Check the dependency lockfile against the RustSec advisory database:
