@@ -117,7 +117,7 @@ dependencies = [
 
 [[package]]
 name = "contabo-ddns"
-version = "0.1.16"
+version = "0.1.17"
 dependencies = [
  "flexi_logger",
  "hickory-resolver",
