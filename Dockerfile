@@ -4,7 +4,7 @@
 # comes from the matching standalone component. Rust 1.99 links musl itself.
 # ring still compiles C, and cc looks up <arch>-linux-musl-gcc for this target.
 # BuildKit sets TARGETARCH to amd64 or arm64.
-FROM dhi.io/rust:1.100.0-debian13-dev@sha256:e866da459605fbbb6225c161af47051200eef70e7676fb42ddabafdcf5b89bb8 AS builder
+FROM dhi.io/rust:1.100.0-debian13-dev@sha256:79a7e1cd7ee16d5eef473763cba01be5939e3b04702fbaac4148f281e9db6957 AS builder
 ARG TARGETARCH
 # dependency-updates.yml moves these pins to the apt candidate in the builder.
 RUN apt-get update \
