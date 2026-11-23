@@ -4,7 +4,7 @@
 # comes from the matching standalone component. Rust 1.99 links musl itself.
 # ring still compiles C, and cc looks up <arch>-linux-musl-gcc for this target.
 # BuildKit sets TARGETARCH to amd64 or arm64.
-FROM dhi.io/rust:1.100.0-debian13-dev@sha256:fdb3a6452a744bb7a3faedd5ad5cb5c600425aba6f11d773be9c40fb433c69cb AS builder
+FROM dhi.io/rust:1.100.0-debian13-dev@sha256:821e116dbe553e51a267a34a3c79d6d2b46f9b10a5acbdef5ce4394be224bdeb AS builder
 ARG TARGETARCH
 # dependency-updates.yml moves these pins to the apt candidate in the builder.
 RUN apt-get update \
@@ -63,7 +63,7 @@ RUN rust_target="$(cat /etc/rust-target)" \
 # Runtime image. dependency-updates.yml refreshes this tag and its manifest-list digest.
 # Docker Hardened Image static, Debian 13. nonroot is uid 65532.
 # The image has CA certificates and no shell.
-FROM dhi.io/static:20250419-debian13@sha256:f3a87dc858c61b3f731ab2f86349ef10953b15918f167dbf9581543255364e32
+FROM dhi.io/static:20250419-debian13@sha256:1295ce0b300e0972ee6034f75f2161a629c12d760526f2e029528416dec2f96e
 COPY --from=builder /out/contabo-ddns /usr/local/bin/contabo-ddns
 COPY --from=builder --chown=65532:65532 /var/log/contabo-ddns /var/log/contabo-ddns
 USER 65532:65532
