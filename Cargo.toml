@@ -1,13 +1,13 @@
 [package]
 name = "contabo-ddns"
-version = "0.1.23"
+version = "0.1.24"
 edition = "2024"
 description = "Update Contabo DNS A records and firewall source IPs"
 publish = false
 
 [dependencies]
 flexi_logger = "=0.31.10"
-hickory-resolver = { version = "=0.26.3", default-features = false, features = ["system-config", "tokio"] }
+hickory-resolver = { version = "=0.26.4", default-features = false, features = ["system-config", "tokio"] }
 log = "=0.4.35"
 reqwest = { version = "=0.13.5", default-features = false, features = ["blocking", "rustls-no-provider"] }
 rustls = { version = "=0.23.46", default-features = false, features = ["ring", "std", "tls12"] }
