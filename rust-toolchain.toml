@@ -1,5 +1,5 @@
 # Pinned by dependency-updates.yml when the Rust Docker image moves.
 # rustup installs this channel (and components) on the next cargo/rustc invocation.
 [toolchain]
-channel = "1.100.0"
+channel = "1.100.1"
 components = ["clippy", "rustfmt", "llvm-tools-preview"]
